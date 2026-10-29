@@ -8,8 +8,10 @@ from sqlalchemy.orm import Session
 
 from admission_agent.agent import run_agent_turn
 from admission_agent.approvals import list_pending_approvals, resolve_approval
-from admission_agent.db import get_db
+from admission_agent.db import get_db, init_db
 from admission_agent.models import Student
+
+init_db()
 
 app = FastAPI()
 templates = Jinja2Templates(directory=str(Path(__file__).resolve().parent / "templates"))
