@@ -1,0 +1,56 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Admission Chat</title>
+  <style>
+    body { font-family: sans-serif; max-width: 640px; margin: 2rem auto; }
+    #log { border: 1px solid #ccc; padding: 1rem; min-height: 200px; margin-bottom: 1rem; }
+    .parent { color: #0a5; }
+    .agent { color: #05a; }
+    input { width: 70%; padding: 0.5rem; }
+    button { padding: 0.5rem 1rem; }
+  </style>
+</head>
+<body>
+  <h1>Parent Chat</h1>
+  <label>Student ID: <input id="studentId" type="number" value="1"></label>
+  <div id="log"></div>
+  <input id="message" type="text" placeholder="Type a message...">
+  <button id="sendBtn">Send</button>
+
+  <script>
+    const log = document.getElementById("log");
+    const messageInput = document.getElementById("message");
+    const studentIdInput = document.getElementById("studentId");
+    const sendBtn = document.getElementById("sendBtn");
+
+    function appendLine(cls, text) {
+      const p = document.createElement("p");
+      p.className = cls;
+      p.textContent = text;
+      log.appendChild(p);
+    }
+
+    async function send() {
+      const message = messageInput.value.trim();
+      if (!message) return;
+      appendLine("parent", "Parent: " + message);
+      messageInput.value = "";
+
+      const response = await fetch("/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ student_id: Number(studentIdInput.value), message }),
+      });
+      const data = await response.json();
+      appendLine("agent", "Agent: " + data.reply);
+    }
+
+    sendBtn.addEventListener("click", send);
+    messageInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") send();
+    });
+  </script>
+</body>
+</html>

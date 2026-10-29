@@ -1,6 +1,8 @@
 import json
+from pathlib import Path
 
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, Request
+from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -10,6 +12,17 @@ from admission_agent.db import get_db
 from admission_agent.models import Student
 
 app = FastAPI()
+templates = Jinja2Templates(directory=str(Path(__file__).resolve().parent / "templates"))
+
+
+@app.get("/")
+def root(request: Request):
+    return templates.TemplateResponse(request, "chat.html")
+
+
+@app.get("/admin")
+def admin_page(request: Request):
+    return templates.TemplateResponse(request, "admin.html")
 
 
 class ChatRequest(BaseModel):

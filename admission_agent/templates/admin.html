@@ -1,0 +1,78 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Admission Admin</title>
+  <style>
+    body { font-family: sans-serif; max-width: 900px; margin: 2rem auto; }
+    table { border-collapse: collapse; width: 100%; margin-bottom: 2rem; }
+    th, td { border: 1px solid #ccc; padding: 0.5rem; text-align: left; }
+    button { margin-right: 0.5rem; }
+  </style>
+</head>
+<body>
+  <h1>Pending Approvals</h1>
+  <table id="approvalsTable">
+    <thead>
+      <tr><th>ID</th><th>Student</th><th>Action</th><th>Reason</th><th>Decide</th></tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <h1>Cases</h1>
+  <table id="casesTable">
+    <thead>
+      <tr><th>ID</th><th>Name</th><th>Grade</th><th>State</th></tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <script>
+    async function loadApprovals() {
+      const response = await fetch("/admin/approvals");
+      const approvals = await response.json();
+      const tbody = document.querySelector("#approvalsTable tbody");
+      tbody.innerHTML = "";
+      for (const a of approvals) {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${a.id}</td>
+          <td>${a.student_id}</td>
+          <td>${a.action_type}</td>
+          <td>${a.reason}</td>
+          <td>
+            <button onclick="decide(${a.id}, 'approved')">Approve</button>
+            <button onclick="decide(${a.id}, 'rejected')">Reject</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      }
+    }
+
+    async function loadCases() {
+      const response = await fetch("/admin/cases");
+      const cases = await response.json();
+      const tbody = document.querySelector("#casesTable tbody");
+      tbody.innerHTML = "";
+      for (const c of cases) {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `<td>${c.id}</td><td>${c.name}</td><td>${c.grade_applied}</td><td>${c.state}</td>`;
+        tbody.appendChild(tr);
+      }
+    }
+
+    async function decide(approvalId, decision) {
+      await fetch(`/admin/approvals/${approvalId}/decide`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ decision }),
+      });
+      loadApprovals();
+      loadCases();
+    }
+
+    loadApprovals();
+    loadCases();
+  </script>
+</body>
+</html>
