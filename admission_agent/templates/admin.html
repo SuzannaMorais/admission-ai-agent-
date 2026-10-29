@@ -6,15 +6,16 @@
   <style>
     body { font-family: sans-serif; max-width: 900px; margin: 2rem auto; }
     table { border-collapse: collapse; width: 100%; margin-bottom: 2rem; }
-    th, td { border: 1px solid #ccc; padding: 0.5rem; text-align: left; }
+    th, td { border: 1px solid #ccc; padding: 0.5rem; text-align: left; vertical-align: top; }
     button { margin-right: 0.5rem; }
+    pre.payload { margin: 0; white-space: pre-wrap; font-size: 0.85rem; }
   </style>
 </head>
 <body>
   <h1>Pending Approvals</h1>
   <table id="approvalsTable">
     <thead>
-      <tr><th>ID</th><th>Student</th><th>Action</th><th>Reason</th><th>Decide</th></tr>
+      <tr><th>ID</th><th>Student</th><th>Action</th><th>Reason</th><th>Payload</th><th>Decide</th></tr>
     </thead>
     <tbody></tbody>
   </table>
@@ -28,45 +29,86 @@
   </table>
 
   <script>
+    const ADMIN_TOKEN_KEY = "admin_token";
+
+    function getAdminToken() {
+      let token = sessionStorage.getItem(ADMIN_TOKEN_KEY);
+      if (!token) {
+        token = window.prompt("Enter admin token:") || "";
+        sessionStorage.setItem(ADMIN_TOKEN_KEY, token);
+      }
+      return token;
+    }
+
+    function authHeaders(extra) {
+      return Object.assign({ "Authorization": `Bearer ${getAdminToken()}` }, extra || {});
+    }
+
+    function cell(text) {
+      const td = document.createElement("td");
+      td.textContent = text;
+      return td;
+    }
+
     async function loadApprovals() {
-      const response = await fetch("/admin/approvals");
+      const response = await fetch("/admin/approvals", { headers: authHeaders() });
       const approvals = await response.json();
       const tbody = document.querySelector("#approvalsTable tbody");
-      tbody.innerHTML = "";
+      tbody.textContent = "";
       for (const a of approvals) {
         const tr = document.createElement("tr");
-        tr.innerHTML = `
-          <td>${a.id}</td>
-          <td>${a.student_id}</td>
-          <td>${a.action_type}</td>
-          <td>${a.reason}</td>
-          <td>
-            <button onclick="decide(${a.id}, 'approved')">Approve</button>
-            <button onclick="decide(${a.id}, 'rejected')">Reject</button>
-          </td>
-        `;
+        tr.appendChild(cell(a.id));
+        tr.appendChild(cell(a.student_id));
+        tr.appendChild(cell(a.action_type));
+        tr.appendChild(cell(a.reason));
+
+        const payloadTd = document.createElement("td");
+        const pre = document.createElement("pre");
+        pre.className = "payload";
+        pre.textContent = JSON.stringify(a.payload, null, 2);
+        payloadTd.appendChild(pre);
+        tr.appendChild(payloadTd);
+
+        const actionsTd = document.createElement("td");
+        const approveBtn = document.createElement("button");
+        approveBtn.textContent = "Approve";
+        approveBtn.addEventListener("click", () => decide(a.id, "approved"));
+        const rejectBtn = document.createElement("button");
+        rejectBtn.textContent = "Reject";
+        rejectBtn.addEventListener("click", () => decide(a.id, "rejected"));
+        actionsTd.appendChild(approveBtn);
+        actionsTd.appendChild(rejectBtn);
+        tr.appendChild(actionsTd);
+
         tbody.appendChild(tr);
       }
     }
 
     async function loadCases() {
-      const response = await fetch("/admin/cases");
+      const response = await fetch("/admin/cases", { headers: authHeaders() });
       const cases = await response.json();
       const tbody = document.querySelector("#casesTable tbody");
-      tbody.innerHTML = "";
+      tbody.textContent = "";
       for (const c of cases) {
         const tr = document.createElement("tr");
-        tr.innerHTML = `<td>${c.id}</td><td>${c.name}</td><td>${c.grade_applied}</td><td>${c.state}</td>`;
+        tr.appendChild(cell(c.id));
+        tr.appendChild(cell(c.name));
+        tr.appendChild(cell(c.grade_applied));
+        tr.appendChild(cell(c.state));
         tbody.appendChild(tr);
       }
     }
 
     async function decide(approvalId, decision) {
-      await fetch(`/admin/approvals/${approvalId}/decide`, {
+      const response = await fetch(`/admin/approvals/${approvalId}/decide`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: authHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify({ decision }),
       });
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        window.alert(`Could not ${decision} approval ${approvalId}: ${response.status} ${body.detail || ""}`);
+      }
       loadApprovals();
       loadCases();
     }

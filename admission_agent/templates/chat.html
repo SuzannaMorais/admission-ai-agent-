@@ -15,6 +15,7 @@
 <body>
   <h1>Parent Chat</h1>
   <label>Student ID: <input id="studentId" type="number" value="1"></label>
+  <label>Your phone (on file): <input id="parentPhone" type="text" placeholder="e.g. 9990001111"></label>
   <div id="log"></div>
   <input id="message" type="text" placeholder="Type a message...">
   <button id="sendBtn">Send</button>
@@ -23,6 +24,7 @@
     const log = document.getElementById("log");
     const messageInput = document.getElementById("message");
     const studentIdInput = document.getElementById("studentId");
+    const parentPhoneInput = document.getElementById("parentPhone");
     const sendBtn = document.getElementById("sendBtn");
 
     function appendLine(cls, text) {
@@ -41,7 +43,7 @@
       const response = await fetch("/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ student_id: Number(studentIdInput.value), message }),
+        body: JSON.stringify({ student_id: Number(studentIdInput.value), message, parent_phone: parentPhoneInput.value }),
       });
       const data = await response.json();
       appendLine("agent", "Agent: " + data.reply);

@@ -56,12 +56,6 @@ def test_admin_cases_rejects_missing_auth(client):
     assert response.status_code == 401
 
 
-def test_admin_page_rejects_missing_auth(client):
-    client.headers.pop("Authorization", None)
-    response = client.get("/admin")
-    assert response.status_code == 401
-
-
 def test_admin_decide_rejects_missing_auth(client, db_session, sample_student):
     req = create_approval_request(db_session, sample_student.id, "admission_decision", {"event": "officer_approves"}, "ready")
     client.headers.pop("Authorization", None)

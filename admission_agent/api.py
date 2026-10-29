@@ -37,7 +37,7 @@ def root(request: Request):
 
 
 @app.get("/admin")
-def admin_page(request: Request, _: None = Depends(require_admin)):
+def admin_page(request: Request):
     return templates.TemplateResponse(request, "admin.html")
 
 
