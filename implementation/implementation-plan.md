@@ -82,19 +82,19 @@ This restates the task-by-task plan that was actually executed (full detail, exa
 
 ### Task 10: Act on final whole-branch code review
 - **Objective:** A fresh-context review of commits `962333c..3a1a48d` against the plan's Review Focus section, then fix any Critical/Important findings.
-- **Files:** TBD — depends entirely on what the review finds.
+- **Files:** `admission_agent/agent.py`, `db.py`, `tools.py`, `approvals.py`, `api.py`, `models.py`, `templates/*.html`, root `README.md`, plus matching test files.
 - **Dependencies:** Phase 1 complete.
 - **Acceptance criteria:** every Critical/Important finding is either fixed with a RED→GREEN test or explicitly ruled on and recorded; full suite stays green after fixes.
-- **Testing:** targeted regression test per fix, then full suite.
-- **Status:** 🔄 In progress — review dispatched, result not yet landed. Do not report this task as done until `progress.md` records the actual findings and fix outcome.
+- **Testing:** targeted regression test per fix, then full suite (57/57 passed).
+- **Status:** ✅ Done. 5 Critical + 13 Important findings fixed (missing `max_tokens`, no schema creation, unmasked-ID leak, confidentiality bypass, no admin auth, broken interview booking, unhandled tool errors, non-idempotent approvals, silent 500s, unknown-action-type silently "succeeding", extension rule bypassable by content, incomplete ID masking, stored XSS, hidden approval payload, empty-reply passthrough, orphan rows + no FK enforcement, a decoupled eval test, and a missing agent-level confidentiality test). 13 Minor findings explicitly deferred. Full detail: `progress.md`, ledger at `../.superpowers/sdd/planning/progress.md`.
 
-### Task 11: Authentication on `/admin/*`
-- **Objective:** Close the no-auth gap documented in `architecture.md`.
-- **Files (expected):** `admission_agent/api.py`, a new auth module, `tests/test_api.py` additions.
-- **Dependencies:** Task 10.
-- **Acceptance criteria:** an unauthenticated request to any `/admin/*` route is rejected; authenticated staff can still use the dashboard.
-- **Testing:** new tests for the unauthenticated-rejection case and the authenticated-success case.
-- **Status:** ⬜ Not started.
+### Task 11: Full login/session system for staff
+- **Objective:** Replace the fix-pass stopgap (a single shared `ADMIN_TOKEN` bearer check) with real per-user authentication and an audit trail of who did what.
+- **Files (expected):** `admission_agent/api.py`, a new auth module, a `User`/session model, `tests/test_api.py` additions.
+- **Dependencies:** Task 10 (done — the stopgap this replaces already exists and is tested).
+- **Acceptance criteria:** each staff member has their own login; an unauthenticated request to any `/admin/*` data/action route is rejected; `ApprovalRequest.resolved_by` is populated from the authenticated identity rather than a free-text field the caller can set to anything.
+- **Testing:** new tests for login, session expiry, and the unauthenticated-rejection case.
+- **Status:** ⬜ Not started. The stopgap (shared bearer token, self-reported `resolved_by`) is live and tested but is explicitly not equivalent to this task.
 
 ### Task 12: Real integration behind one mocked tool, as a spike
 - **Objective:** Replace one mock (most likely WhatsApp reminders, since that's the spec's most-cited pain point) with a real API call, behind a feature flag, so the rest of the system is proven against something live before committing to all five.

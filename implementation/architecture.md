@@ -1,6 +1,6 @@
 # Technical Architecture
 
-This describes the actual code in the repository root as of commit `3a1a48d` on branch `implement-admission-agent`. Anything not yet built is explicitly marked **Proposed**.
+This describes the actual code in the repository root as of commit `bdc32e7` on branch `implement-admission-agent` (post-review fix pass). Anything not yet built is explicitly marked **Proposed**.
 
 ## High-level component diagram
 
@@ -163,16 +163,22 @@ Not shown above (applies from any non-terminal state): `withdraw_application` �
 
 | Method | Path | Purpose | Auth |
 |---|---|---|---|
-| GET | `/` | Parent chat page | None |
-| POST | `/chat` | `{student_id, message}` → `{reply}`, runs the agent | None |
-| GET | `/admin` | Staff admin page | None |
-| GET | `/admin/approvals` | List pending `ApprovalRequest` rows | None |
-| POST | `/admin/approvals/{id}/decide` | `{decision, resolver_note?}` → resolved approval | None |
-| GET | `/admin/cases` | List all students with state | None |
+| GET | `/` | Parent chat page | None (page shell; no data) |
+| POST | `/chat` | `{student_id, message, parent_phone}` → `{reply}`, runs the agent | `parent_phone` must match the parent on file for case data to appear in context — see Authentication below |
+| GET | `/admin` | Staff admin page | None (page shell; no data — JS prompts for the token before calling the endpoints below) |
+| GET | `/admin/approvals` | List pending `ApprovalRequest` rows (including `payload`, `resolved_by`) | Bearer `ADMIN_TOKEN` |
+| POST | `/admin/approvals/{id}/decide` | `{decision, resolver_note?, resolved_by?}` → resolved approval, or 400/404/409 | Bearer `ADMIN_TOKEN` |
+| GET | `/admin/cases` | List all students with state | Bearer `ADMIN_TOKEN` |
 
 ## Authentication and authorization
 
-**There is none.** Every endpoint above, including the admin decision endpoint, is open to anyone who can reach the server. This is acceptable for a local prototype/demo and is **not** acceptable for anything deployed where a parent or the public internet could reach it. Adding auth (at minimum: a login-gated admin UI, and some form of parent identity binding for `/chat` beyond the phone-match check inside `query_applicant_status`) is tracked as a gap in `implementation-plan.md`.
+A code review caught that this was completely open in the original build; a stopgap now exists, but it is explicitly not a real auth system:
+
+- **`/admin/approvals`, `/admin/cases`, `POST /admin/approvals/{id}/decide`:** gated behind a single shared bearer token (`require_admin` dependency in `api.py`, checked against the `ADMIN_TOKEN` environment variable). Any request without `Authorization: Bearer <ADMIN_TOKEN>` gets 401; if `ADMIN_TOKEN` isn't set at all, every admin request gets 503 rather than silently allowing access. There is no per-user login — every staff member who knows the token has full access, and `ApprovalRequest.resolved_by` is a free-text field the caller supplies, not a verified identity.
+- **`GET /admin` (the page shell):** intentionally left ungated. A Bearer header can't be attached to a plain browser navigation, so gating the page itself would make it unreachable by normal navigation. The page has no data of its own — it prompts for the token via JS (`sessionStorage`) and attaches it to every real `fetch` call against the gated endpoints above.
+- **`/chat`:** still has no bearer-token gate — it's meant for parents, not staff. Instead, the caller must supply `parent_phone`, and the agent only includes a student's case data (state, grade, parent contact) in the model's context when that phone matches the parent on file; otherwise it gets a context block explicitly instructing it to withhold case-specific details (see `run_agent_turn` in `agent.py`). This closes the confidentiality bypass the review found (case data was previously handed to the model unconditionally), but it is still just a phone-string match, not a real identity check — a leaked phone number is enough to pass it.
+
+**Still not built:** a real login/session system for staff (tracked as Task 11 in `implementation-plan.md`), and any stronger parent-identity verification than a phone-number match.
 
 ## Agent / tool-calling data flow
 

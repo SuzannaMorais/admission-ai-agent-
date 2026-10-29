@@ -43,7 +43,7 @@ Build an AI agent that owns the admission enquiry lifecycle end to end — enqui
 - A real vector-embedding knowledge base. The current knowledge base is keyword-overlap search over seeded JSON, not an embedding/vector store.
 - The full "10 test cases" mentioned in spec 10.5 — only the 5 cases the spec's own table (10.7) documents are automated.
 - Cross-case/aggregate memory (seat-filling trends, peak admission months, common roadblocks) — spec Layer 4.4's fourth memory tier. Needs real usage volume this prototype doesn't have.
-- Authentication/authorization on the API or admin UI — **there is currently none**. Anyone who can reach the server can call `/admin/approvals` or decide an approval. This is a real gap for anything beyond a local demo (see `architecture.md` → Authentication and `testing.md` → known gaps).
+- **Real login/session authentication** on the admin UI — a code review caught that the admin endpoints originally had no auth at all; a stopgap shared bearer token (`ADMIN_TOKEN`) now gates them, but there's no per-user login or verified identity behind `resolved_by`. This is still a real gap for anything beyond a small trusted staff (see `architecture.md` → Authentication and `testing.md` → known gaps).
 
 ## Functional requirements
 

@@ -28,11 +28,11 @@ Full dependency list: `../requirements.txt`.
 
 ## Current project status (as of 2026-10-29)
 
-- All 9 tasks of the original implementation plan (`../planning.md`) are complete and committed on branch `implement-admission-agent`.
-- **32/32 automated tests pass.** Command used: `./.venv/Scripts/python -m pytest -v` (run from the repository root).
-- A final whole-branch code review (independent model pass) was dispatched before this documentation was written; its findings and any resulting fix-pass are recorded in [`progress.md`](progress.md) once they land. Treat any status in this folder dated before that review lands as pre-review.
-- **Not yet pushed to GitHub** at the time this folder was created — see [`progress.md`](progress.md) for the current push status, and do not assume a push happened unless that file says so with a commit SHA.
-- All five external integrations (WhatsApp, School CRM/SIS, Calendar, Document Parser) are **mocked** — there are no real credentials or endpoints wired in. See [`architecture.md`](architecture.md) for exactly what each mock does.
+- All 9 tasks of the original implementation plan (`../planning.md`) are complete.
+- An independent code review of the full branch found 5 Critical + 13 Important issues (the app couldn't actually start or serve a real chat request, confidential data could leak, admin approvals had no auth). All of them were fixed, each with a failing test written first — see `progress.md` for the full list. 13 Minor findings were explicitly deferred, not fixed.
+- **57/57 automated tests pass.** Command: `./.venv/Scripts/python -m pytest -v` (run from the repository root).
+- Admin endpoints now require a shared bearer token (`ADMIN_TOKEN`); this is a stopgap, not a real login system (see `architecture.md` → Authentication). `/chat` now requires `parent_phone` and only shows case data to the model when it matches the parent on file.
+- All five external integrations (WhatsApp, School CRM/SIS, Calendar, Document Parser) are still **mocked** — there are no real credentials or endpoints wired in. See [`architecture.md`](architecture.md) for exactly what each mock does.
 
 ## Folder and file map
 
