@@ -88,6 +88,7 @@ class ApprovalRequest(Base):
     reason: Mapped[str] = mapped_column(String)
     resolved_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     resolver_note: Mapped[str | None] = mapped_column(String, nullable=True)
+    resolved_by: Mapped[str | None] = mapped_column(String, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
 
 

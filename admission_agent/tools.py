@@ -3,7 +3,7 @@ from datetime import date, datetime, timezone
 
 from sqlalchemy.orm import Session
 
-from admission_agent.approvals import create_approval_request
+from admission_agent.approvals import KNOWN_ACTION_TYPES, create_approval_request
 from admission_agent.knowledge_base import load_knowledge_base, search_knowledge_base
 from admission_agent.models import CalendarBooking, Document, Parent, Reminder, Student
 
@@ -103,6 +103,8 @@ def add_parent_to_whatsapp_group(db: Session, student_id: int) -> dict:
 
 
 def request_human_approval(db: Session, student_id: int, action_type: str, payload: dict, reason: str) -> dict:
+    if action_type not in KNOWN_ACTION_TYPES:
+        raise ValueError(f"Unknown action_type: {action_type!r}")
     request = create_approval_request(db, student_id, action_type, payload, reason)
     return {"approval_id": request.id, "status": "pending"}
 

@@ -1,5 +1,7 @@
 from datetime import date, timedelta
 
+import pytest
+
 from admission_agent.models import Document
 from admission_agent.tools import (
     book_interview_slot,
@@ -45,6 +47,11 @@ def test_request_human_approval_never_mutates_student_state(db_session, sample_s
     request_human_approval(db_session, sample_student.id, "admission_decision", {"event": "officer_approves"}, "parent requested")
     db_session.refresh(sample_student)
     assert sample_student.state == original_state
+
+
+def test_request_human_approval_rejects_unknown_action_type(db_session, sample_student):
+    with pytest.raises(ValueError):
+        request_human_approval(db_session, sample_student.id, "seat_allocation", {}, "parent requested")
 
 
 def test_parse_uploaded_document_does_not_store_unmasked_text_anywhere(db_session, sample_student):

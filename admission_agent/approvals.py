@@ -6,6 +6,15 @@ from sqlalchemy.orm import Session
 from admission_agent.models import ApprovalRequest, Student
 from admission_agent.state_machine import ApplicationState, transition
 
+KNOWN_ACTION_TYPES = ("admission_decision", "fee_exception")
+
+
+class ApprovalAlreadyResolvedError(Exception):
+    def __init__(self, approval_id: int, status: str):
+        super().__init__(f"Approval {approval_id} was already resolved (status={status!r})")
+        self.approval_id = approval_id
+        self.status = status
+
 
 def _utcnow() -> datetime:
     return datetime.now(timezone.utc).replace(tzinfo=None)
@@ -28,14 +37,26 @@ def list_pending_approvals(db: Session) -> list[ApprovalRequest]:
     return db.query(ApprovalRequest).filter_by(status="pending").all()
 
 
-def resolve_approval(db: Session, approval_id: int, decision: str, resolver_note: str | None = None) -> ApprovalRequest:
+def resolve_approval(
+    db: Session,
+    approval_id: int,
+    decision: str,
+    resolver_note: str | None = None,
+    resolved_by: str | None = None,
+) -> ApprovalRequest:
     if decision not in ("approved", "rejected"):
         raise ValueError(f"Invalid decision: {decision!r}")
 
     request = db.query(ApprovalRequest).filter_by(id=approval_id).one()
+    if request.status != "pending":
+        raise ApprovalAlreadyResolvedError(request.id, request.status)
+
     payload = json.loads(request.payload)
 
     if decision == "approved":
+        if request.action_type not in KNOWN_ACTION_TYPES:
+            raise ValueError(f"Unknown action_type: {request.action_type!r}")
+
         student = db.query(Student).filter_by(id=request.student_id).one()
         if request.action_type == "admission_decision":
             new_state = transition(ApplicationState(student.state), payload["event"])
@@ -47,5 +68,6 @@ def resolve_approval(db: Session, approval_id: int, decision: str, resolver_note
     request.status = decision
     request.resolved_at = _utcnow()
     request.resolver_note = resolver_note
+    request.resolved_by = resolved_by
     db.commit()
     return request
