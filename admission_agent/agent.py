@@ -2,6 +2,7 @@ from admission_agent.models import ConversationMessage, Parent, Student
 from admission_agent.tools import TOOL_DISPATCH, TOOL_SCHEMAS
 
 MODEL = "claude-sonnet-5"
+MAX_TOKENS = 4096
 
 FALLBACK_REPLY = "I need to check with our admission staff and will get back to you."
 
@@ -21,10 +22,20 @@ When uncertain, follow this order:
 """
 
 
-def _build_context_block(student: Student, parent: Parent) -> str:
+UNVERIFIED_CONTEXT_BLOCK = (
+    "Case context — caller identity NOT verified. Do not disclose this student's application "
+    "status, grade, fees paid, or any other case-specific detail. If the caller needs their "
+    "status, use the query_applicant_status tool (it independently re-checks identity) or ask "
+    "them to confirm the phone number on file."
+)
+
+
+def _build_context_block(student: Student, parent: Parent, caller_verified: bool) -> str:
+    if not caller_verified:
+        return UNVERIFIED_CONTEXT_BLOCK
     return (
-        f"Case context — student: {student.name}, grade applied: {student.grade_applied}, "
-        f"state: {student.state}, parent contact: {parent.phone} "
+        f"Case context — caller identity verified. Student: {student.name}, grade applied: "
+        f"{student.grade_applied}, state: {student.state}, parent contact: {parent.phone} "
         f"(preferred channel: {parent.preferred_channel})."
     )
 
@@ -33,18 +44,37 @@ def _extract_text(content) -> str:
     return "".join(block.text for block in content if block.type == "text")
 
 
-def run_agent_turn(db, student_id: int, parent_message: str, client=None, max_tool_iterations: int = 6) -> str:
+def _run_tool(db, block) -> dict:
+    tool_fn = TOOL_DISPATCH.get(block.name)
+    if tool_fn is None:
+        return {"type": "tool_result", "tool_use_id": block.id, "content": f"Unknown tool: {block.name}", "is_error": True}
+    try:
+        result = tool_fn(db=db, **block.input)
+    except Exception as exc:  # noqa: BLE001 - deliberately broad: any tool failure must become a recoverable tool_result, never an unhandled 500
+        return {"type": "tool_result", "tool_use_id": block.id, "content": f"Tool error: {exc}", "is_error": True}
+    return {"type": "tool_result", "tool_use_id": block.id, "content": str(result)}
+
+
+def run_agent_turn(
+    db,
+    student_id: int,
+    parent_message: str,
+    parent_phone: str,
+    client=None,
+    max_tool_iterations: int = 6,
+) -> str:
     if client is None:
         import anthropic
 
         client = anthropic.Anthropic()
 
+    student = db.query(Student).filter_by(id=student_id).one()
+    parent = db.query(Parent).filter_by(id=student.parent_id).one()
+    caller_verified = parent_phone == parent.phone
+
     parent_msg = ConversationMessage(student_id=student_id, role="parent", content=parent_message)
     db.add(parent_msg)
     db.commit()
-
-    student = db.query(Student).filter_by(id=student_id).one()
-    parent = db.query(Parent).filter_by(id=student.parent_id).one()
 
     history = (
         db.query(ConversationMessage)
@@ -53,7 +83,7 @@ def run_agent_turn(db, student_id: int, parent_message: str, client=None, max_to
         .all()
     )
 
-    messages = [{"role": "user", "content": _build_context_block(student, parent)}]
+    messages = [{"role": "user", "content": _build_context_block(student, parent, caller_verified)}]
     for entry in history:
         role = "user" if entry.role == "parent" else "assistant"
         messages.append({"role": role, "content": entry.content})
@@ -64,13 +94,15 @@ def run_agent_turn(db, student_id: int, parent_message: str, client=None, max_to
     while True:
         response = client.messages.create(
             model=MODEL,
+            max_tokens=MAX_TOKENS,
             system=SYSTEM_PROMPT,
             messages=messages,
             tools=TOOL_SCHEMAS,
         )
 
         if response.stop_reason != "tool_use":
-            final_text = _extract_text(response.content)
+            extracted = _extract_text(response.content)
+            final_text = extracted if extracted else FALLBACK_REPLY
             break
 
         if iterations >= max_tool_iterations:
@@ -83,11 +115,7 @@ def run_agent_turn(db, student_id: int, parent_message: str, client=None, max_to
         tool_results = []
         for block in response.content:
             if block.type == "tool_use":
-                tool_fn = TOOL_DISPATCH[block.name]
-                result = tool_fn(db=db, **block.input)
-                tool_results.append(
-                    {"type": "tool_result", "tool_use_id": block.id, "content": str(result)}
-                )
+                tool_results.append(_run_tool(db, block))
         messages.append({"role": "user", "content": tool_results})
 
     agent_msg = ConversationMessage(student_id=student_id, role="agent", content=final_text)

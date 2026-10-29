@@ -24,11 +24,17 @@ def tool_use_response(name: str, input: dict) -> FakeMessage:
     )
 
 
+REQUIRED_CREATE_KWARGS = ("model", "max_tokens", "messages")
+
+
 class _FakeMessagesResource:
     def __init__(self, client: "FakeAnthropicClient"):
         self._client = client
 
     def create(self, **kwargs):
+        missing = [name for name in REQUIRED_CREATE_KWARGS if kwargs.get(name) is None]
+        if missing:
+            raise TypeError(f"messages.create() missing required argument(s): {', '.join(missing)}")
         self._client.calls.append(kwargs)
         return self._client._responses.pop(0)
 

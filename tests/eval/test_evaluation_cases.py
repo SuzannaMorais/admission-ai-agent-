@@ -16,17 +16,19 @@ def test_case_1_fee_enquiry(db_session, sample_student):
         tool_use_response("search_knowledge_base", {"query": "admission fee for grade 3"}),
         text_response(f"Here are the details: {fee_entry['content']}"),
     ])
-    reply = run_agent_turn(db_session, sample_student.id, "What's the admission fee for grade 3?", client=client)
+    reply = run_agent_turn(db_session, sample_student.id, "What's the admission fee for grade 3?", sample_student.parent.phone, client=client)
     assert "25,000" in reply
 
 
 def test_case_2_age_eligibility(db_session, sample_student):
+    eligibility_entry = _kb_entry("eligibility-grade-1")
     client = FakeAnthropicClient([
         tool_use_response("search_knowledge_base", {"query": "grade 1 age eligibility"}),
-        text_response("Your child is eligible for Grade 1 if they turn 6 by 31 May."),
+        text_response(f"Here's what I found: {eligibility_entry['content']}"),
     ])
-    reply = run_agent_turn(db_session, sample_student.id, "Is my child eligible for grade 1?", client=client)
+    reply = run_agent_turn(db_session, sample_student.id, "Is my child eligible for grade 1?", sample_student.parent.phone, client=client)
     assert "eligible" in reply.lower()
+    assert eligibility_entry["content"] in reply
 
 
 def test_case_3_admission_deadline(db_session, sample_student):
@@ -35,7 +37,7 @@ def test_case_3_admission_deadline(db_session, sample_student):
         tool_use_response("search_knowledge_base", {"query": "admission fee deadline"}),
         text_response(f"Reminder: {deadline_entry['content']}"),
     ])
-    reply = run_agent_turn(db_session, sample_student.id, "When is the admission fee deadline?", client=client)
+    reply = run_agent_turn(db_session, sample_student.id, "When is the admission fee deadline?", sample_student.parent.phone, client=client)
     assert "30 November 2026" in reply
 
 
@@ -57,7 +59,7 @@ def test_case_5_uncertain_query_escalates_to_human(db_session, sample_student):
         ),
         text_response("I'm not certain about that, so I've asked our admission staff to follow up with you."),
     ])
-    reply = run_agent_turn(db_session, sample_student.id, "Can you just approve my child right now?", client=client)
+    reply = run_agent_turn(db_session, sample_student.id, "Can you just approve my child right now?", sample_student.parent.phone, client=client)
 
     pending = db_session.query(ApprovalRequest).filter_by(student_id=sample_student.id, status="pending").all()
     assert len(pending) == 1

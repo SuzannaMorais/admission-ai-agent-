@@ -7,7 +7,9 @@ from admission_agent.approvals import create_approval_request
 from admission_agent.knowledge_base import load_knowledge_base, search_knowledge_base
 from admission_agent.models import CalendarBooking, Document, Parent, Reminder, Student
 
-_MASK_PATTERN = re.compile(r"\d{10,}")
+_MASK_PATTERN = re.compile(r"\d(?:[ -]?\d){9,}")
+
+_OVERDUE_WORDING_PATTERN = re.compile(r"overdue|penalty|late fee|failure to (submit|pay)", re.IGNORECASE)
 
 
 def _utcnow() -> datetime:
@@ -15,7 +17,17 @@ def _utcnow() -> datetime:
 
 
 def _mask_long_digits(text: str) -> str:
-    return _MASK_PATTERN.sub(lambda m: "XXXXXX" + m.group(0)[-4:], text)
+    def _mask(match: re.Match) -> str:
+        digits_only = re.sub(r"[ -]", "", match.group(0))
+        return "XXXXXX" + digits_only[-4:]
+
+    return _MASK_PATTERN.sub(_mask, text)
+
+
+def _parse_slot_datetime(slot_datetime) -> datetime:
+    if isinstance(slot_datetime, datetime):
+        return slot_datetime
+    return datetime.fromisoformat(slot_datetime)
 
 
 def search_knowledge_base_tool(db: Session, query: str) -> list[dict]:
@@ -35,9 +47,10 @@ def send_whatsapp_reminder(db: Session, student_id: int, message: str, reminder_
     student = db.query(Student).filter_by(id=student_id).one()
 
     is_overdue_type = reminder_type in ("document_overdue", "fee_overdue")
+    has_overdue_wording = bool(_OVERDUE_WORDING_PATTERN.search(message))
     has_active_extension = student.extension_granted_until is not None and student.extension_granted_until >= date.today()
 
-    if is_overdue_type and has_active_extension:
+    if (is_overdue_type or has_overdue_wording) and has_active_extension:
         reminder = Reminder(
             student_id=student_id,
             message=message,
@@ -66,7 +79,7 @@ def parse_uploaded_document(db: Session, student_id: int, doc_type: str, raw_tex
         student_id=student_id,
         doc_type=doc_type,
         status="valid",
-        raw_text=raw_text,
+        raw_text=masked_text,
         parsed_data=masked_text,
     )
     db.add(document)
@@ -74,11 +87,12 @@ def parse_uploaded_document(db: Session, student_id: int, doc_type: str, raw_tex
     return {"doc_type": doc_type, "masked_text": masked_text}
 
 
-def book_interview_slot(db: Session, student_id: int, slot_datetime: datetime) -> dict:
-    booking = CalendarBooking(student_id=student_id, slot_datetime=slot_datetime)
+def book_interview_slot(db: Session, student_id: int, slot_datetime) -> dict:
+    parsed_slot = _parse_slot_datetime(slot_datetime)
+    booking = CalendarBooking(student_id=student_id, slot_datetime=parsed_slot)
     db.add(booking)
     db.commit()
-    return {"booked": True, "slot": slot_datetime.isoformat()}
+    return {"booked": True, "slot": parsed_slot.isoformat()}
 
 
 def add_parent_to_whatsapp_group(db: Session, student_id: int) -> dict:
