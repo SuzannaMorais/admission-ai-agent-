@@ -1,0 +1,26 @@
+[
+  {
+    "id": "fee-grade-1",
+    "category": "fees",
+    "topic": "Grade 1 fee structure",
+    "content": "Grade 1: registration fee Rs. 2,000, admission fee Rs. 20,000, term fees Rs. 15,000 per term (3 terms per year)."
+  },
+  {
+    "id": "fee-grade-2",
+    "category": "fees",
+    "topic": "Grade 2 fee structure",
+    "content": "Grade 2: registration fee Rs. 2,000, admission fee Rs. 22,000, term fees Rs. 16,000 per term (3 terms per year)."
+  },
+  {
+    "id": "fee-grade-3",
+    "category": "fees",
+    "topic": "Grade 3 fee structure",
+    "content": "Grade 3: registration fee Rs. 2,000, admission fee Rs. 25,000, term fees Rs. 18,000 per term (3 terms per year)."
+  },
+  {
+    "id": "fee-deadline",
+    "category": "fees",
+    "topic": "Admission fee payment deadline",
+    "content": "The admission fee must be paid within 10 days of receiving the admission offer. The deadline for this academic year's admission fee payment is 30 November 2026."
+  }
+]

@@ -1,0 +1,20 @@
+[
+  {
+    "id": "faq-certificates",
+    "category": "faq",
+    "topic": "Required certificates for admission",
+    "content": "Required documents: birth certificate, previous school transfer certificate (if applicable), previous grade report card, and address proof. All must be submitted before the registration fee is processed."
+  },
+  {
+    "id": "faq-whatsapp-group",
+    "category": "faq",
+    "topic": "School WhatsApp group",
+    "content": "Once registration is complete, the parent's phone number is added to the grade-wise school WhatsApp group for circulars and updates."
+  },
+  {
+    "id": "faq-allergies",
+    "category": "faq",
+    "topic": "Student allergy information",
+    "content": "Parents should inform the school of any food or medical allergies during registration so the school can note them for the student's safety."
+  }
+]

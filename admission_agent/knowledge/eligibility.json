@@ -1,0 +1,26 @@
+[
+  {
+    "id": "eligibility-grade-1",
+    "category": "eligibility",
+    "topic": "Grade 1 age eligibility",
+    "content": "Grade 1: the child must turn 6 years old on or before 31 May of the admission year to be eligible."
+  },
+  {
+    "id": "eligibility-grade-2",
+    "category": "eligibility",
+    "topic": "Grade 2 age eligibility",
+    "content": "Grade 2: the child must turn 7 years old on or before 31 May of the admission year to be eligible."
+  },
+  {
+    "id": "eligibility-grade-3",
+    "category": "eligibility",
+    "topic": "Grade 3 age eligibility",
+    "content": "Grade 3: the child must turn 8 years old on or before 31 May of the admission year to be eligible."
+  },
+  {
+    "id": "eligibility-baseline-test",
+    "category": "eligibility",
+    "topic": "Baseline test requirement",
+    "content": "All applicants for Grade 2 and above must pass a baseline entrance test conducted by school coordinators before registration fee payment."
+  }
+]
