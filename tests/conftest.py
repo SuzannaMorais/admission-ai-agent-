@@ -8,6 +8,7 @@ from datetime import date
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
 
 from admission_agent.db import Base
 from admission_agent.models import Parent, Student
@@ -15,7 +16,11 @@ from admission_agent.models import Parent, Student
 
 @pytest.fixture
 def db_session():
-    engine = create_engine("sqlite:///:memory:")
+    engine = create_engine(
+        "sqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
     Base.metadata.create_all(engine)
     TestSession = sessionmaker(bind=engine)
     session = TestSession()
@@ -35,3 +40,16 @@ def sample_student(db_session):
     db_session.add(student)
     db_session.commit()
     return student
+
+
+@pytest.fixture
+def client(db_session):
+    from fastapi.testclient import TestClient
+
+    from admission_agent.api import app
+    from admission_agent.db import get_db
+
+    app.dependency_overrides[get_db] = lambda: db_session
+    with TestClient(app) as test_client:
+        yield test_client
+    app.dependency_overrides.clear()
