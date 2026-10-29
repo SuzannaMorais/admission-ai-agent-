@@ -42,14 +42,19 @@ def sample_student(db_session):
     return student
 
 
+TEST_ADMIN_TOKEN = "test-admin-token"
+
+
 @pytest.fixture
 def client(db_session):
     from fastapi.testclient import TestClient
 
-    from admission_agent.api import app
+    from admission_agent.api import app, get_admin_token
     from admission_agent.db import get_db
 
     app.dependency_overrides[get_db] = lambda: db_session
+    app.dependency_overrides[get_admin_token] = lambda: TEST_ADMIN_TOKEN
     with TestClient(app) as test_client:
+        test_client.headers.update({"Authorization": f"Bearer {TEST_ADMIN_TOKEN}"})
         yield test_client
     app.dependency_overrides.clear()
